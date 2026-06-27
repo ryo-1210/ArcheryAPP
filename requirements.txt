@@ -7,3 +7,4 @@ matplotlib
 japanize-matplotlib
 gspread
 google-auth
+google-api-python-client

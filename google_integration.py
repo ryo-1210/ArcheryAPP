@@ -15,7 +15,7 @@ from googleapiclient.http import MediaIoBaseUpload
 # 設定(実際の値に置き換えてください)
 # -----------------------------------------------------
 SPREADSHEET_NAME = "archery_records"  # 使用するスプレッドシートの名前
-DRIVE_FOLDER_ID = "https://drive.google.com/drive/u/2/folders/1Idd2BL62cCFZBSB8Sv8wzsopXwCG41lR"  # 画像保存先のGoogle DriveフォルダID(URLの末尾の文字列)
+DRIVE_FOLDER_ID = "1Idd2BL62cCFZBSB8Sv8wzsopXwCG41lR"  # 画像保存先のGoogle DriveフォルダID
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
