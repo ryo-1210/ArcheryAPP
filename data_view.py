@@ -34,7 +34,7 @@ def build_score_table_html(scores):
 
 
 def render_data_view(go_to):
-    st.error("これは新しいdata_view.pyです")
+    st.title("これは新しいdata_view.pyです")
     col_back, col_title = st.columns([1, 5])
     with col_back:
         if st.button("⬅", use_container_width=True):
