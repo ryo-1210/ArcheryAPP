@@ -8,6 +8,33 @@ from google_integration import fetch_all_records
 USER_ID_OPTIONS = ["(全員)"] + [f"{i:03d}" for i in range(1, 1000)]
 
 
+def build_score_table_html(scores):
+    """
+    矢の得点リストから、横並び・横スクロール対応のコンパクトなHTML表を組み立てる。
+    scores: 得点の文字列リスト(例: ["7", "10", "8", ...])
+    """
+    cell_style = "border:1px solid #555; padding:4px 10px; text-align:center;"
+    header_style = cell_style + "background:#2b2b2b;"
+
+    no_header = "".join(f'<th style="{header_style}">{i+1}</th>' for i in range(len(scores)))
+    score_cells = "".join(f'<td style="{cell_style}">{s}</td>' for s in scores)
+
+    return f"""
+    <div style="overflow-x: auto; white-space: nowrap; margin: 6px 0;">
+      <table style="border-collapse: collapse; width: max-content;">
+        <tr>
+          <th style="{header_style}">No.</th>
+          {no_header}
+        </tr>
+        <tr>
+          <th style="{header_style}">得点</th>
+          {score_cells}
+        </tr>
+      </table>
+    </div>
+    """
+
+
 def render_data_view(go_to):
     col_back, col_title = st.columns([1, 5])
     with col_back:
@@ -39,19 +66,10 @@ def render_data_view(go_to):
     # 新しい順に表示
     for record in reversed(records):
         with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')}")
+            st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')} / "
+                     f"的: {record.get('target_size_cm', '-')}cm / 合計点: {record.get('total_score', '-')}")
 
-                scores = str(record.get("scores", "")).split(",")
-                score_cols = st.columns(min(len(scores), 6))
-                for i, col in enumerate(score_cols[:6]):
-                    with col:
-                        st.metric(f"矢{i+1}", scores[i] if i < len(scores) else "-")
+            scores = str(record.get("scores", "")).split(",")
+            st.markdown(build_score_table_html(scores), unsafe_allow_html=True)
 
-                st.write(f"合計点: {record.get('total_score', '-')}")
-
-            with col2:
-                st.caption(f"的: {record.get('target_size_cm', '-')}cm")
-                st.caption(f"重心X: {record.get('centroid_x', '-')}")
-                st.caption(f"重心Y: {record.get('centroid_y', '-')}")
+            st.caption(f"重心X: {record.get('centroid_x', '-')}cm / 重心Y: {record.get('centroid_y', '-')}cm")
