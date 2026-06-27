@@ -108,26 +108,16 @@ def fetch_all_records(user_id: str = None):
 # -----------------------------------------------------
 # Google Drive操作(画像保存)
 # -----------------------------------------------------
+# 注: サービスアカウントには個人Drive容量の割り当てがないため、
+# Driveへの自動アップロードは無効化しています。
+# 画像は登録時にダウンロードボタンで個別に保存する運用に変更しました。
+
 def upload_image_to_drive(image_bytes: bytes, filename: str, folder_id: str = DRIVE_FOLDER_ID) -> str:
     """
-    画像をGoogle Driveにアップロードする。
-    戻り値: アップロードされたファイルのDrive ID
+    (現在は無効化中)画像をGoogle Driveにアップロードする。
+    サービスアカウントの容量制限のため使用していません。
     """
-    service = get_drive_service()
-
-    file_metadata = {
-        "name": filename,
-        "parents": [folder_id] if folder_id else [],
-    }
-    media = MediaIoBaseUpload(io.BytesIO(image_bytes), mimetype="image/jpeg", resumable=True)
-
-    file = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id",
-    ).execute()
-
-    return file.get("id")
+    raise NotImplementedError("Drive自動アップロードは現在無効化されています")
 
 
 def generate_image_filename(user_id: str, side: str, ext: str = "jpg") -> str:

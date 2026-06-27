@@ -18,7 +18,7 @@ from archery_core import (
     X_RING_RADIUS_CM,
     ARROW_DIAMETER_CM,
 )
-from google_integration import append_record, upload_image_to_drive, generate_image_filename
+from google_integration import append_record
 
 # 十字キーで1回押すごとに動く距離(cm)
 STEP_SIZE_CM = 0.2
@@ -222,6 +222,27 @@ def render_edit_result(go_to):
 
     st.write("---")
 
+    # ----- 学習データ用の画像ダウンロード(任意) -----
+    with st.expander("📷 学習データ用に画像を保存する(任意)"):
+        st.caption("将来のモデル改善のため、元の写真をダウンロードして保存しておけます。")
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            st.download_button(
+                "1枚目をダウンロード",
+                data=st.session_state.left_image_bytes,
+                file_name=f"{st.session_state.user_id}_1.jpg",
+                mime="image/jpeg",
+                use_container_width=True,
+            )
+        with col_dl2:
+            st.download_button(
+                "2枚目をダウンロード",
+                data=st.session_state.right_image_bytes,
+                file_name=f"{st.session_state.user_id}_2.jpg",
+                mime="image/jpeg",
+                use_container_width=True,
+            )
+
     # ----- 登録ボタン -----
     if st.button("📥 登録", type="primary", use_container_width=True):
         with st.spinner("登録中です..."):
@@ -233,12 +254,6 @@ def render_edit_result(go_to):
 
                 user_id = st.session_state.user_id
                 target_size = st.session_state.target_size
-
-                # 画像をDriveにアップロード
-                left_filename = generate_image_filename(user_id, "left")
-                right_filename = generate_image_filename(user_id, "right")
-                left_drive_id = upload_image_to_drive(st.session_state.left_image_bytes, left_filename)
-                right_drive_id = upload_image_to_drive(st.session_state.right_image_bytes, right_filename)
 
                 from datetime import datetime
                 record = {
@@ -255,8 +270,8 @@ def render_edit_result(go_to):
                     "spread": round(stats["spread"], 2) if stats["spread"] is not None else "",
                     "offset_x": round(stats["offset_x"], 2) if stats["offset_x"] is not None else "",
                     "offset_y": round(stats["offset_y"], 2) if stats["offset_y"] is not None else "",
-                    "left_image_drive_id": left_drive_id,
-                    "right_image_drive_id": right_drive_id,
+                    "left_image_drive_id": "",  # Drive自動保存は無効化中
+                    "right_image_drive_id": "",  # Drive自動保存は無効化中
                 }
 
                 append_record(record)
