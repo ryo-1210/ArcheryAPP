@@ -95,12 +95,28 @@ def fetch_all_records(user_id: str = None):
     """
     全レコードを取得する。user_idを指定すればそのIDのみに絞り込む。
     戻り値: 辞書のリスト
+
+    注: gspreadはスプレッドシート上の'001のような文字列を、
+    読み取り時に数値の1に変換してしまうことがあるため、
+    比較前に3桁ゼロパディングして文字列として正規化する。
     """
     worksheet = get_worksheet()
     records = worksheet.get_all_records()
 
+    def normalize_id(value):
+        """user_idを3桁ゼロパディングの文字列に正規化する"""
+        s = str(value).strip()
+        if s.isdigit():
+            return s.zfill(3)
+        return s
+
+    # 取得した全レコードのuser_idを正規化しておく(表示・比較の両方で使う)
+    for r in records:
+        r["user_id"] = normalize_id(r.get("user_id", ""))
+
     if user_id:
-        records = [r for r in records if str(r.get("user_id", "")) == str(user_id)]
+        target = normalize_id(user_id)
+        records = [r for r in records if r["user_id"] == target]
 
     return records
 
