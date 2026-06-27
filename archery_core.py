@@ -295,3 +295,48 @@ def format_score(score, is_x):
     if is_x:
         return "X"
     return str(score)
+
+
+# -----------------------------------------------------
+# 統計計算(重心・散らばり・的中心との差分)
+# -----------------------------------------------------
+def calculate_statistics(points):
+    """
+    着弾点群から統計値を計算する。
+
+    points: cm単位、的中心が原点のXY座標配列
+
+    戻り値: dict
+        centroid_x, centroid_y: 重心座標
+        spread: 重心からの散らばり(標準偏差、全矢の重心までの距離のRMS)
+        offset_x: 重心と的中心(0,0)とのX軸方向差分(+:右にズレ, -:左にズレ)
+        offset_y: 重心と的中心(0,0)とのY軸方向差分(+:上にズレ, -:下にズレ)
+    """
+    if len(points) == 0:
+        return {
+            "centroid_x": None,
+            "centroid_y": None,
+            "spread": None,
+            "offset_x": None,
+            "offset_y": None,
+        }
+
+    points = np.array(points)
+    centroid = points.mean(axis=0)
+    centroid_x, centroid_y = centroid[0], centroid[1]
+
+    # 重心からの散らばり(各矢と重心の距離のRMS)
+    distances_from_centroid = np.linalg.norm(points - centroid, axis=1)
+    spread = float(np.sqrt(np.mean(distances_from_centroid ** 2))) if len(points) > 0 else 0.0
+
+    # 的中心(0,0)との差分。サイト調整用なので符号付きでそのまま使う
+    offset_x = float(centroid_x)
+    offset_y = float(centroid_y)
+
+    return {
+        "centroid_x": float(centroid_x),
+        "centroid_y": float(centroid_y),
+        "spread": spread,
+        "offset_x": offset_x,
+        "offset_y": offset_y,
+    }

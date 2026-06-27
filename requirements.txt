@@ -5,3 +5,5 @@ numpy
 scipy
 matplotlib
 japanize-matplotlib
+gspread
+google-auth
