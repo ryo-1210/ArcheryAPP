@@ -34,14 +34,14 @@ def build_score_table_html(scores):
 
 
 def render_data_view(go_to):
-    st.title("これは新しいdata_view.pyです")
+    
     col_back, col_title = st.columns([1, 5])
     with col_back:
         if st.button("⬅", use_container_width=True):
             go_to("top")
             st.rerun()
     with col_title:
-        st.title("データ閲覧")
+        st.title("データ閲覧反映されてる？")
 
     user_id = st.selectbox("個人IDで検索", USER_ID_OPTIONS, key="search_user_id")
 
