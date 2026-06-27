@@ -10,11 +10,7 @@ USER_ID_OPTIONS = ["(全員)"] + [f"{i:03d}" for i in range(1, 1000)]
 
     
 def render_data_view(go_to):
-    records_debug = fetch_all_records()
-    st.write("デバッグ: 最初のレコードのuser_id型と値")
-    if records_debug:
-        st.write(type(records_debug[0].get("user_id")), records_debug[0].get("user_id"))
-    
+        
     col_back, col_title = st.columns([1, 5])
     with col_back:
         if st.button("⬅", use_container_width=True):
