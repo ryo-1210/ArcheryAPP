@@ -16,27 +16,24 @@ def build_score_table_html(scores):
     cell_style = "border:1px solid #555; padding:4px 10px; text-align:center;"
     header_style = cell_style + "background:#2b2b2b;"
 
-    no_header = "".join(f'<th style="{header_style}">{i+1}</th>' for i in range(len(scores)))
-    score_cells = "".join(f'<td style="{cell_style}">{s}</td>' for s in scores)
+    no_header = ""
+    for i in range(len(scores)):
+        no_header += '<th style="' + header_style + '">' + str(i + 1) + '</th>'
 
-    return f"""
-    <div style="overflow-x: auto; white-space: nowrap; margin: 6px 0;">
-      <table style="border-collapse: collapse; width: max-content;">
-        <tr>
-          <th style="{header_style}">No.</th>
-          {no_header}
-        </tr>
-        <tr>
-          <th style="{header_style}">得点</th>
-          {score_cells}
-        </tr>
-      </table>
-    </div>
-    """
+    score_cells = ""
+    for s in scores:
+        score_cells += '<td style="' + cell_style + '">' + str(s) + '</td>'
+
+    html = '<div style="overflow-x: auto; white-space: nowrap; margin: 6px 0;">'
+    html += '<table style="border-collapse: collapse; width: max-content;">'
+    html += '<tr><th style="' + header_style + '">No.</th>' + no_header + '</tr>'
+    html += '<tr><th style="' + header_style + '">得点</th>' + score_cells + '</tr>'
+    html += '</table></div>'
+
+    return html
 
 
 def render_data_view(go_to):
-    st.error("これは新しいdata_view.pyです")
     col_back, col_title = st.columns([1, 5])
     with col_back:
         if st.button("⬅", use_container_width=True):
