@@ -204,7 +204,7 @@ def render_edit_result(go_to):
                     "user_id": user_id,
                     "target_size_cm": target_size,
                     "arrow_count": len(points),
-                    "scores": ",".join(score_labels),
+                    "scores": "/".join(score_labels),
                     "coords_x": ",".join(f"{p[0]:.2f}" for p in points),
                     "coords_y": ",".join(f"{p[1]:.2f}" for p in points),
                     "total_score": total_score,

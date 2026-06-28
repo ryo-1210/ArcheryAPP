@@ -104,7 +104,7 @@ def render_data_view(go_to):
                         st.session_state.viewing_record_key = record_key
                     st.rerun()
 
-            scores = str(record.get("scores", "")).split(",")
+            scores = str(record.get("scores", "")).split("/")
             st.markdown(build_score_table_html(scores), unsafe_allow_html=True)
 
             st.caption(f"重心X: {record.get('centroid_x', '-')}cm / 重心Y: {record.get('centroid_y', '-')}cm / "
