@@ -107,7 +107,8 @@ def render_data_view(go_to):
             scores = str(record.get("scores", "")).split(",")
             st.markdown(build_score_table_html(scores), unsafe_allow_html=True)
 
-            st.caption(f"重心X: {record.get('centroid_x', '-')}cm / 重心Y: {record.get('centroid_y', '-')}cm")
+            st.caption(f"重心X: {record.get('centroid_x', '-')}cm / 重心Y: {record.get('centroid_y', '-')}cm / "
+                       f"散らばり: {record.get('spread', '-')}cm")
 
             # 虫眼鏡が押されているレコードのみ、詳細プロットを展開表示する
             if st.session_state.get("viewing_record_key") == record_key:
