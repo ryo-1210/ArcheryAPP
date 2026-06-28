@@ -24,6 +24,7 @@ SCOPES = [
 
 # スプレッドシートの列構成(この順番で1行が記録される)
 COLUMNS = [
+    "record_id",        # レコードを一意に識別するID(更新・削除に使用)
     "timestamp",
     "user_id",
     "target_size_cm",
@@ -90,10 +91,51 @@ def append_record(record: dict):
     注: value_input_option="RAW"を指定することで、
     "5,3,3,0,0"のようなカンマ区切り文字列や"001"のようなID文字列が
     Google Sheets側で数値に変換されてしまうのを防ぐ。
+    record_idが指定されていない場合は自動生成する。
     """
+    import uuid
+    record = dict(record)
+    if not record.get("record_id"):
+        record["record_id"] = uuid.uuid4().hex[:12]
+
     worksheet = get_worksheet()
     row = [record.get(col, "") for col in COLUMNS]
     worksheet.append_row(row, value_input_option="RAW")
+    return record["record_id"]
+
+
+def update_record(record_id: str, updates: dict):
+    """
+    record_idに対応する行を更新する。
+    updates: 更新したい列名と値の辞書(一部の列のみでOK)
+    """
+    worksheet = get_worksheet()
+    all_values = worksheet.get_all_values()  # ヘッダー込みの全データ
+
+    if not all_values:
+        raise ValueError("シートにデータがありません")
+
+    header = all_values[0]
+    try:
+        record_id_col_idx = header.index("record_id")
+    except ValueError:
+        raise ValueError("record_id列が見つかりません")
+
+    target_row_idx = None
+    for i, row in enumerate(all_values[1:], start=2):  # 1行目はヘッダーなので2行目から
+        if len(row) > record_id_col_idx and row[record_id_col_idx] == record_id:
+            target_row_idx = i
+            break
+
+    if target_row_idx is None:
+        raise ValueError(f"record_id={record_id} のデータが見つかりませんでした")
+
+    # 更新する列ごとにセルを書き換える
+    for col_name, value in updates.items():
+        if col_name not in COLUMNS:
+            continue
+        col_idx = COLUMNS.index(col_name) + 1  # gspreadは1始まり
+        worksheet.update_cell(target_row_idx, col_idx, value)
 
 
 def fetch_all_records(user_id: str = None):
