@@ -89,17 +89,8 @@ def append_record(record: dict):
     注: value_input_option="RAW"を指定することで、
     "5,3,3,0,0"のようなカンマ区切り文字列や"001"のようなID文字列が
     Google Sheets側で数値に変換されてしまうのを防ぐ。
-    さらにuser_id, scoresには先頭にアポストロフィを付け、
-    Sheets側の自動型推測を確実に回避する。
     """
     worksheet = get_worksheet()
-
-    record = dict(record)  # 元のdictを変更しないようコピー
-    if "user_id" in record:
-        record["user_id"] = "'" + str(record["user_id"])
-    if "scores" in record:
-        record["scores"] = "'" + str(record["scores"])
-
     row = [record.get(col, "") for col in COLUMNS]
     worksheet.append_row(row, value_input_option="RAW")
 
@@ -123,12 +114,19 @@ def fetch_all_records(user_id: str = None):
             return s.zfill(3)
         return s
 
+    def strip_leading_quote(value):
+        """先頭にアポストロフィが紛れ込んでいた場合に除去する(保険処理)"""
+        s = str(value)
+        if s.startswith("'"):
+            return s[1:]
+        return s
+
     # 取得した全レコードのuser_idを正規化しておく(表示・比較の両方で使う)
     for r in records:
-        r["user_id"] = normalize_id(r.get("user_id", ""))
+        r["user_id"] = normalize_id(strip_leading_quote(r.get("user_id", "")))
         # scoresが数値化されてしまっている場合に備え、文字列に変換しておく
         # (既にカンマ区切り文字列ならそのまま、数値化されていた場合はその数値文字列になる)
-        r["scores"] = str(r.get("scores", ""))
+        r["scores"] = strip_leading_quote(r.get("scores", ""))
 
     if user_id:
         target = normalize_id(user_id)
