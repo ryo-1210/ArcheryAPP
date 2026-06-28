@@ -7,6 +7,7 @@ from google_integration import fetch_all_records
 from archery_core import plot_points
 
 USER_ID_OPTIONS = ["(全員)"] + [f"{i:03d}" for i in range(1, 1000)]
+TARGET_SIZE_FILTER_OPTIONS = ["(全サイズ)", 20, 40, 60, 80, 122]
 
 
 def build_score_table_html(scores):
@@ -66,7 +67,13 @@ def render_data_view(go_to):
     if "viewing_record_key" not in st.session_state:
         st.session_state.viewing_record_key = None
 
-    user_id = st.selectbox("個人IDで検索", USER_ID_OPTIONS, key="search_user_id")
+    col_id, col_size = st.columns(2)
+    with col_id:
+        user_id = st.selectbox("個人IDで検索", USER_ID_OPTIONS, key="search_user_id")
+    with col_size:
+        size_filter = st.selectbox(
+            "的紙フィルタ", TARGET_SIZE_FILTER_OPTIONS, key="search_target_size"
+        )
 
     with st.spinner("読み込み中..."):
         try:
@@ -77,6 +84,10 @@ def render_data_view(go_to):
         except Exception as e:
             st.error(f"データの取得に失敗しました: {e}")
             st.stop()
+
+    # 的紙サイズで絞り込み
+    if size_filter != "(全サイズ)":
+        records = [r for r in records if str(r.get("target_size_cm", "")) == str(size_filter)]
 
     if not records:
         st.info("データが見つかりませんでした。")
@@ -121,5 +132,21 @@ def render_data_view(go_to):
                 if points:
                     fig = plot_points(points, figsize=(5, 5))
                     st.pyplot(fig, use_container_width=True)
+
+                    if st.button("✏️ このデータを編集する", key=f"edit_{record_key}", use_container_width=True):
+                        # edit_result.pyが必要とするセッション情報をセットして遷移
+                        st.session_state.is_editing_existing = True
+                        st.session_state.editing_record_id = record.get("record_id", "")
+                        st.session_state.edit_points = [list(p) for p in points]
+                        st.session_state.plot_source_selected = "existing"  # 選択ステップをスキップさせる
+                        st.session_state.selected_arrow_idx = None
+                        st.session_state.user_id = record.get("user_id", "")
+                        st.session_state.memo = record.get("memo", "")
+                        st.session_state.target_size = record.get("target_size_cm", "")
+                        st.session_state.left_image_bytes = None
+                        st.session_state.right_image_bytes = None
+
+                        go_to("edit_result")
+                        st.rerun()
                 else:
                     st.info("このデータには座標情報がありません。")
