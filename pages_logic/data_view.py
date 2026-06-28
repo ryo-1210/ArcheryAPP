@@ -110,6 +110,10 @@ def render_data_view(go_to):
             st.caption(f"重心X: {record.get('centroid_x', '-')}cm / 重心Y: {record.get('centroid_y', '-')}cm / "
                        f"散らばり: {record.get('spread', '-')}cm")
 
+            memo = str(record.get("memo", "")).strip()
+            if memo:
+                st.caption(f"📝 {memo}")
+
             # 虫眼鏡が押されているレコードのみ、詳細プロットを展開表示する
             if st.session_state.get("viewing_record_key") == record_key:
                 st.write("---")

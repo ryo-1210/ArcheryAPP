@@ -36,8 +36,6 @@ def render_analyze_input(go_to):
     with col_title:
         st.title("的解析")
 
-    st.text_area("メモ(任意)", placeholder="練習内容や条件などを記入できます", key="memo_input")
-
     st.subheader("1枚目")
     left_file = st.file_uploader("1枚目の写真をアップロード", type=["jpg", "jpeg", "png"], key="left_upload")
 
@@ -56,6 +54,8 @@ def render_analyze_input(go_to):
     )
     if target_size != 60:
         st.warning("現在のモデルは60cmの的紙での学習データのみのため、60cm以外は検出精度が低い可能性があります。")
+
+    st.text_area("メモ(任意)", placeholder="練習内容や条件などを記入できます", key="memo_input")
 
     st.write("")
 

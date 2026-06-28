@@ -198,9 +198,10 @@ def render_edit_result(go_to):
                 user_id = st.session_state.user_id
                 target_size = st.session_state.target_size
 
-                from datetime import datetime
+                from datetime import datetime, timezone, timedelta
+                JST = timezone(timedelta(hours=9))
                 record = {
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "timestamp": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
                     "user_id": user_id,
                     "target_size_cm": target_size,
                     "arrow_count": len(points),
@@ -213,6 +214,7 @@ def render_edit_result(go_to):
                     "spread": round(stats["spread"], 2) if stats["spread"] is not None else "",
                     "offset_x": round(stats["offset_x"], 2) if stats["offset_x"] is not None else "",
                     "offset_y": round(stats["offset_y"], 2) if stats["offset_y"] is not None else "",
+                    "memo": st.session_state.get("memo", ""),
                     "left_image_drive_id": "",  # Drive自動保存は無効化中
                     "right_image_drive_id": "",  # Drive自動保存は無効化中
                 }
