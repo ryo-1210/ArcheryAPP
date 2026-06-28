@@ -4,75 +4,18 @@
 
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import japanize_matplotlib
 import streamlit as st
 
 from archery_core import (
     calculate_score,
     format_score,
     calculate_statistics,
-    RING_RADII_CM,
-    RING_COLORS,
-    X_RING_RADIUS_CM,
-    ARROW_DIAMETER_CM,
+    plot_points,
 )
 from google_integration import append_record
 
 # 十字キーで1回押すごとに動く距離(cm)
 STEP_SIZE_CM = 0.2
-
-
-def draw_target(ax):
-    for r, c in zip(reversed(RING_RADII_CM), reversed(RING_COLORS)):
-        circle = patches.Circle((0, 0), r, facecolor=c, edgecolor='gray', linewidth=0.5, zorder=1)
-        ax.add_patch(circle)
-
-    x_circle = patches.Circle((0, 0), X_RING_RADIUS_CM, facecolor='none',
-                               edgecolor='black', linewidth=1.0, zorder=2)
-    ax.add_patch(x_circle)
-
-
-def plot_points(points, selected_idx=None, color='#27AE60'):
-    fig, ax = plt.subplots(figsize=(6, 6))
-    draw_target(ax)
-
-    if len(points) > 0:
-        points_arr = np.array(points)
-        arrow_radius = ARROW_DIAMETER_CM / 2
-
-        scores_and_x = [calculate_score(p) for p in points_arr]
-        total_score = sum(s for s, _ in scores_and_x)
-        x_count = sum(1 for _, is_x in scores_and_x if is_x)
-        score_labels = [format_score(s, x) for s, x in scores_and_x]
-
-        for i, (x, y) in enumerate(points_arr):
-            is_selected = (i == selected_idx)
-            face_color = '#FF4136' if is_selected else color
-            edge_color = 'yellow' if is_selected else 'white'
-            edge_width = 2.5 if is_selected else 1.2
-
-            arrow_circle = patches.Circle((x, y), arrow_radius, facecolor=face_color,
-                                          edgecolor=edge_color, linewidth=edge_width, zorder=5, alpha=0.95)
-            ax.add_patch(arrow_circle)
-
-        info_text = f"合計点: {total_score} / 矢数: {len(points)} / X数: {x_count}"
-        ax.text(0.02, 0.98, info_text, transform=ax.transAxes, va='top', fontsize=11,
-               bbox=dict(facecolor='white', alpha=0.85))
-
-        for i, ((x, y), label) in enumerate(zip(points_arr, score_labels)):
-            ax.annotate(str(i + 1), (x, y), textcoords="offset points", xytext=(8, 8),
-                       fontsize=9, color='black', fontweight='bold',
-                       bbox=dict(facecolor='white', alpha=0.75, pad=1))
-
-    ax.set_xlim(-32, 32)
-    ax.set_ylim(-32, 32)
-    ax.set_aspect('equal')
-    ax.set_xlabel('X (cm)')
-    ax.set_ylabel('Y (cm)')
-    ax.grid(True, alpha=0.3)
-    return fig
 
 
 def image_bytes_to_array(image_bytes):
