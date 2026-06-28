@@ -28,7 +28,7 @@ COLUMNS = [
     "user_id",
     "target_size_cm",
     "arrow_count",
-    "scores",          # カンマ区切り
+    "scores",          # スラッシュ区切り(例: 7/10/8/6/7/X)
     "coords_x",         # カンマ区切り
     "coords_y",         # カンマ区切り
     "total_score",
@@ -37,6 +37,7 @@ COLUMNS = [
     "spread",
     "offset_x",
     "offset_y",
+    "memo",
     "left_image_drive_id",
     "right_image_drive_id",
 ]
