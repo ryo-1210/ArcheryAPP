@@ -14,7 +14,7 @@ def build_score_table_html(scores):
     scores: 得点の文字列リスト(例: ["7", "10", "8", ...])
     """
     cell_style = "border:1px solid #555; padding:4px 10px; text-align:center;"
-    header_style = cell_style + "background:#2b2b2b;"
+    header_style = cell_style + "background:#2b2b2b; color:#ffffff;"
 
     no_header = ""
     for i in range(len(scores)):
@@ -64,8 +64,8 @@ def render_data_view(go_to):
     # 新しい順に表示
     for record in reversed(records):
         with st.container(border=True):
-            st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')} / "
-                     f"的: {record.get('target_size_cm', '-')}cm / 合計点: {record.get('total_score', '-')}")
+            st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')}")
+            st.write(f"的: {record.get('target_size_cm', '-')}cm / 合計点: {record.get('total_score', '-')}")
 
             scores = str(record.get("scores", "")).split(",")
             st.markdown(build_score_table_html(scores), unsafe_allow_html=True)
