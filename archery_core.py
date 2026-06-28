@@ -5,6 +5,8 @@
 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from scipy.optimize import linear_sum_assignment
 
 # -----------------------------------------------------
@@ -295,6 +297,70 @@ def format_score(score, is_x):
     if is_x:
         return "X"
     return str(score)
+
+
+# -----------------------------------------------------
+# プロット描画(複数画面で共通利用)
+# -----------------------------------------------------
+def draw_target(ax, ring_radii=RING_RADII_CM, ring_colors=RING_COLORS, x_ring_radius=X_RING_RADIUS_CM):
+    """的の同心円(Xリング含む)を描画する"""
+    for r, c in zip(reversed(ring_radii), reversed(ring_colors)):
+        circle = patches.Circle((0, 0), r, facecolor=c, edgecolor='gray', linewidth=0.5, zorder=1)
+        ax.add_patch(circle)
+
+    x_circle = patches.Circle((0, 0), x_ring_radius, facecolor='none',
+                               edgecolor='black', linewidth=1.0, zorder=2)
+    ax.add_patch(x_circle)
+
+
+def plot_points(points, selected_idx=None, color='#27AE60', figsize=(6, 6),
+                 arrow_diameter=ARROW_DIAMETER_CM, show_score_label=True):
+    """
+    着弾点群を的の上にプロットする(編集画面・データ閲覧画面の両方で使用)
+
+    points: cm単位、的中心が原点のXY座標配列
+    selected_idx: 選択中(強調表示)の矢のインデックス。Noneなら強調なし
+    color: 矢の表示色
+    show_score_label: 各矢の左上に番号ラベルを表示するか
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    draw_target(ax)
+
+    if len(points) > 0:
+        points_arr = np.array(points)
+        arrow_radius = arrow_diameter / 2
+
+        scores_and_x = [calculate_score(p) for p in points_arr]
+        total_score = sum(s for s, _ in scores_and_x)
+        x_count = sum(1 for _, is_x in scores_and_x if is_x)
+
+        for i, (x, y) in enumerate(points_arr):
+            is_selected = (i == selected_idx)
+            face_color = '#FF4136' if is_selected else color
+            edge_color = 'yellow' if is_selected else 'white'
+            edge_width = 2.5 if is_selected else 1.2
+
+            arrow_circle = patches.Circle((x, y), arrow_radius, facecolor=face_color,
+                                          edgecolor=edge_color, linewidth=edge_width, zorder=5, alpha=0.95)
+            ax.add_patch(arrow_circle)
+
+        info_text = f"合計点: {total_score} / 矢数: {len(points)} / X数: {x_count}"
+        ax.text(0.02, 0.98, info_text, transform=ax.transAxes, va='top', fontsize=11,
+               bbox=dict(facecolor='white', alpha=0.85))
+
+        if show_score_label:
+            for i, (x, y) in enumerate(points_arr):
+                ax.annotate(str(i + 1), (x, y), textcoords="offset points", xytext=(8, 8),
+                           fontsize=9, color='black', fontweight='bold',
+                           bbox=dict(facecolor='white', alpha=0.75, pad=1))
+
+    ax.set_xlim(-32, 32)
+    ax.set_ylim(-32, 32)
+    ax.set_aspect('equal')
+    ax.set_xlabel('X (cm)')
+    ax.set_ylabel('Y (cm)')
+    ax.grid(True, alpha=0.3)
+    return fig
 
 
 # -----------------------------------------------------
