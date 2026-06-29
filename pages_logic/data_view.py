@@ -55,18 +55,12 @@ def parse_record_points(record):
     return list(zip(xs, ys))
 
 
-def render_aggregate_section(records, current_filter_key):
+def render_aggregate_section(selected_records):
     """
     選択された複数レコードの矢を1つの的にまとめてプロットし、
     全体の重心・散らばり・的中心との差分を表示する。
+    また、選択した各データの個別得点表も補足的に表示する。
     """
-    # 選択されているレコードのみ抜き出す(現在の表示順=新しい順に対応するキー生成と揃える)
-    selected_records = []
-    for idx, record in enumerate(reversed(records)):
-        record_key = f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}"
-        if record_key in st.session_state.selected_record_keys:
-            selected_records.append(record)
-
     all_points = []
     for record in selected_records:
         all_points.extend(parse_record_points(record))
@@ -95,6 +89,25 @@ def render_aggregate_section(records, current_filter_key):
 
         st.caption("X差分が+なら重心は的の右側、Y差分が+なら重心は的の上側にズレています。")
 
+        st.write("---")
+        st.caption("選択した各データの得点(補足)")
+        for record in selected_records:
+            scores = str(record.get("scores", "")).split("/")
+            st.write(f"{record.get('timestamp', '')} / ID: {record.get('user_id', '')}")
+            st.markdown(build_score_table_html(scores), unsafe_allow_html=True)
+
+
+@st.cache_data(ttl=30)
+def fetch_records_cached(user_id):
+    """
+    全件取得をキャッシュする(30秒間は再取得しない)。
+    チェックボックスのクリックなどによる再描画のたびに
+    スプレッドシートへ問い合わせてspinnerが出るのを防ぐ。
+    """
+    if user_id == "(全員)":
+        return fetch_all_records()
+    return fetch_all_records(user_id=user_id)
+
 
 def render_data_view(go_to):
     col_back, col_title = st.columns([1, 5])
@@ -108,9 +121,6 @@ def render_data_view(go_to):
     if "viewing_record_key" not in st.session_state:
         st.session_state.viewing_record_key = None
 
-    if "selected_record_keys" not in st.session_state:
-        st.session_state.selected_record_keys = set()
-
     if "show_aggregate" not in st.session_state:
         st.session_state.show_aggregate = False
 
@@ -122,15 +132,11 @@ def render_data_view(go_to):
             "的紙フィルタ", TARGET_SIZE_FILTER_OPTIONS, key="search_target_size"
         )
 
-    with st.spinner("読み込み中..."):
-        try:
-            if user_id == "(全員)":
-                records = fetch_all_records()
-            else:
-                records = fetch_all_records(user_id=user_id)
-        except Exception as e:
-            st.error(f"データの取得に失敗しました: {e}")
-            st.stop()
+    try:
+        records = fetch_records_cached(user_id)
+    except Exception as e:
+        st.error(f"データの取得に失敗しました: {e}")
+        st.stop()
 
     # 的紙サイズで絞り込み
     if size_filter != "(全サイズ)":
@@ -140,53 +146,53 @@ def render_data_view(go_to):
         st.info("データが見つかりませんでした。")
         return
 
-    # フィルタが変わったら選択状態をリセットする(別の絞り込み結果と混ざらないように)
-    current_filter_key = f"{user_id}_{size_filter}"
-    if st.session_state.get("last_filter_key") != current_filter_key:
-        st.session_state.selected_record_keys = set()
-        st.session_state.show_aggregate = False
-        st.session_state.last_filter_key = current_filter_key
-
     st.write(f"{len(records)}件のデータが見つかりました。")
+    st.write("---")
 
-    # ----- 複数選択して集計するエリア -----
-    selected_count = len(st.session_state.selected_record_keys)
-    col_count, col_agg_btn, col_clear_btn = st.columns([2, 2, 1])
-    with col_count:
+    # レコードキーの一覧を先に作っておく(表示順=新しい順)
+    ordered_records = list(enumerate(reversed(records)))
+    record_keys = [
+        f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}"
+        for idx, record in ordered_records
+    ]
+
+    # ----- サイドバー: 選択状況と集計操作(常時表示) -----
+    # st.session_state上の各チェックボックスの値を直接の正としてカウントする
+    selected_keys = [k for k in record_keys if st.session_state.get(f"check_{k}", False)]
+    selected_count = len(selected_keys)
+
+    with st.sidebar:
+        st.subheader("複数データの集計")
         st.write(f"選択中: {selected_count}件")
-    with col_agg_btn:
-        if st.button("📊 選択データを集計", use_container_width=True, disabled=(selected_count == 0)):
+        if st.button("📊 選択データを集計", use_container_width=True,
+                     disabled=(selected_count == 0), type="primary"):
             st.session_state.show_aggregate = True
             st.rerun()
-    with col_clear_btn:
         if st.button("選択解除", use_container_width=True):
-            st.session_state.selected_record_keys = set()
+            for k in record_keys:
+                st.session_state[f"check_{k}"] = False
             st.session_state.show_aggregate = False
             st.rerun()
 
     # ----- 集計結果の表示 -----
     if st.session_state.show_aggregate and selected_count > 0:
-        render_aggregate_section(records, current_filter_key)
-
-    st.write("---")
+        selected_records = [
+            record for record, key in zip((r for _, r in ordered_records), record_keys)
+            if key in selected_keys
+        ]
+        render_aggregate_section(selected_records)
+        st.write("---")
 
     # 新しい順に表示
-    for idx, record in enumerate(reversed(records)):
-        # レコードを一意に識別するキー(タイムスタンプ+ID+インデックスの組み合わせ)
-        record_key = f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}"
-
+    for (idx, record), record_key in zip(ordered_records, record_keys):
         with st.container(border=True):
             col_check, col_info, col_search = st.columns([1, 4, 1])
             with col_check:
-                is_checked = st.checkbox(
+                # value引数を指定せず、keyだけで状態を保持させる(二重管理によるズレを防ぐ)
+                st.checkbox(
                     "選択", key=f"check_{record_key}",
-                    value=(record_key in st.session_state.selected_record_keys),
                     label_visibility="collapsed",
                 )
-                if is_checked:
-                    st.session_state.selected_record_keys.add(record_key)
-                else:
-                    st.session_state.selected_record_keys.discard(record_key)
             with col_info:
                 st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')}")
                 st.write(f"的: {record.get('target_size_cm', '-')}cm / 合計点: {record.get('total_score', '-')}")
