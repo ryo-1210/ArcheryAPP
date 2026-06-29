@@ -124,6 +124,9 @@ def render_data_view(go_to):
     if "show_aggregate" not in st.session_state:
         st.session_state.show_aggregate = False
 
+    if "checkbox_generation" not in st.session_state:
+        st.session_state.checkbox_generation = 0
+
     col_id, col_size = st.columns(2)
     with col_id:
         user_id = st.selectbox("個人IDで検索", USER_ID_OPTIONS, key="search_user_id")
@@ -131,6 +134,10 @@ def render_data_view(go_to):
         size_filter = st.selectbox(
             "的紙フィルタ", TARGET_SIZE_FILTER_OPTIONS, key="search_target_size"
         )
+
+    sort_order = st.radio(
+        "並び順", ["新しい順", "古い順"], key="sort_order_select", horizontal=True,
+    )
 
     try:
         records = fetch_records_cached(user_id)
@@ -146,13 +153,17 @@ def render_data_view(go_to):
         st.info("データが見つかりませんでした。")
         return
 
+    # 日付(timestamp)でソート。文字列の "YYYY-MM-DD HH:MM:SS" 形式なのでそのまま文字列比較で並べ替えられる
+    records = sorted(records, key=lambda r: str(r.get("timestamp", "")), reverse=(sort_order == "新しい順"))
+
     st.write(f"{len(records)}件のデータが見つかりました。")
     st.write("---")
 
-    # レコードキーの一覧を先に作っておく(表示順=新しい順)
-    ordered_records = list(enumerate(reversed(records)))
+    # レコードキーの一覧を先に作っておく(世代番号を含めることで、解除時に確実にリセットできる)
+    gen = st.session_state.checkbox_generation
+    ordered_records = list(enumerate(records))
     record_keys = [
-        f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}"
+        f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}_{gen}"
         for idx, record in ordered_records
     ]
 
@@ -221,15 +232,25 @@ def render_data_view(go_to):
 
     with st.sidebar:
         st.subheader("複数データの集計")
-        st.write(f"選択中: {selected_count}件")
+        st.write(f"選択中: {selected_count}件 / 全{len(record_keys)}件")
+
+        col_all, col_none = st.columns(2)
+        with col_all:
+            if st.button("全選択", use_container_width=True):
+                for k in record_keys:
+                    st.session_state[f"check_{k}"] = True
+                st.rerun()
+        with col_none:
+            if st.button("選択解除", use_container_width=True):
+                # チェックボックスのkeyに世代番号を含めているため、
+                # 世代を1つ進めることで確実に全ウィジェットを未選択状態で再生成できる
+                st.session_state.checkbox_generation += 1
+                st.session_state.show_aggregate = False
+                st.rerun()
+
         if st.button("📊 選択データを集計", use_container_width=True,
                      disabled=(selected_count == 0), type="primary"):
             st.session_state.show_aggregate = True
-            st.rerun()
-        if st.button("選択解除", use_container_width=True):
-            for k in record_keys:
-                st.session_state[f"check_{k}"] = False
-            st.session_state.show_aggregate = False
             st.rerun()
 
         # ----- 集計結果はサイドバーに表示する -----
