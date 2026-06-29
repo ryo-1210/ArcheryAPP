@@ -156,39 +156,12 @@ def render_data_view(go_to):
         for idx, record in ordered_records
     ]
 
-    # ----- サイドバー: 選択状況と集計操作(常時表示) -----
-    # st.session_state上の各チェックボックスの値を直接の正としてカウントする
-    selected_keys = [k for k in record_keys if st.session_state.get(f"check_{k}", False)]
-    selected_count = len(selected_keys)
-
-    with st.sidebar:
-        st.subheader("複数データの集計")
-        st.write(f"選択中: {selected_count}件")
-        if st.button("📊 選択データを集計", use_container_width=True,
-                     disabled=(selected_count == 0), type="primary"):
-            st.session_state.show_aggregate = True
-            st.rerun()
-        if st.button("選択解除", use_container_width=True):
-            for k in record_keys:
-                st.session_state[f"check_{k}"] = False
-            st.session_state.show_aggregate = False
-            st.rerun()
-
-    # ----- 集計結果の表示 -----
-    if st.session_state.show_aggregate and selected_count > 0:
-        selected_records = [
-            record for record, key in zip((r for _, r in ordered_records), record_keys)
-            if key in selected_keys
-        ]
-        render_aggregate_section(selected_records)
-        st.write("---")
-
-    # 新しい順に表示
+    # ----- チェックボックス一覧を先に描画する -----
+    # (サイドバーの集計判定より先にウィジェットを生成し、最新の状態を反映させるため)
     for (idx, record), record_key in zip(ordered_records, record_keys):
         with st.container(border=True):
             col_check, col_info, col_search = st.columns([1, 4, 1])
             with col_check:
-                # value引数を指定せず、keyだけで状態を保持させる(二重管理によるズレを防ぐ)
                 st.checkbox(
                     "選択", key=f"check_{record_key}",
                     label_visibility="collapsed",
@@ -240,3 +213,29 @@ def render_data_view(go_to):
                         st.rerun()
                 else:
                     st.info("このデータには座標情報がありません。")
+
+    # ----- サイドバー: 選択状況と集計操作(常時表示) -----
+    # チェックボックスがすべて生成された後なので、最新の選択状態を正しく参照できる
+    selected_keys = [k for k in record_keys if st.session_state.get(f"check_{k}", False)]
+    selected_count = len(selected_keys)
+
+    with st.sidebar:
+        st.subheader("複数データの集計")
+        st.write(f"選択中: {selected_count}件")
+        if st.button("📊 選択データを集計", use_container_width=True,
+                     disabled=(selected_count == 0), type="primary"):
+            st.session_state.show_aggregate = True
+            st.rerun()
+        if st.button("選択解除", use_container_width=True):
+            for k in record_keys:
+                st.session_state[f"check_{k}"] = False
+            st.session_state.show_aggregate = False
+            st.rerun()
+
+        # ----- 集計結果はサイドバーに表示する -----
+        if st.session_state.show_aggregate and selected_count > 0:
+            selected_records = [
+                record for record, key in zip((r for _, r in ordered_records), record_keys)
+                if key in selected_keys
+            ]
+            render_aggregate_section(selected_records)
