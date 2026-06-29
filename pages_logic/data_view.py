@@ -4,7 +4,7 @@
 
 import streamlit as st
 from google_integration import fetch_all_records
-from archery_core import plot_points
+from archery_core import plot_points, calculate_statistics
 
 USER_ID_OPTIONS = ["(全員)"] + [f"{i:03d}" for i in range(1, 1000)]
 TARGET_SIZE_FILTER_OPTIONS = ["(全サイズ)", 20, 40, 60, 80, 122]
@@ -55,6 +55,47 @@ def parse_record_points(record):
     return list(zip(xs, ys))
 
 
+def render_aggregate_section(records, current_filter_key):
+    """
+    選択された複数レコードの矢を1つの的にまとめてプロットし、
+    全体の重心・散らばり・的中心との差分を表示する。
+    """
+    # 選択されているレコードのみ抜き出す(現在の表示順=新しい順に対応するキー生成と揃える)
+    selected_records = []
+    for idx, record in enumerate(reversed(records)):
+        record_key = f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}"
+        if record_key in st.session_state.selected_record_keys:
+            selected_records.append(record)
+
+    all_points = []
+    for record in selected_records:
+        all_points.extend(parse_record_points(record))
+
+    if not all_points:
+        st.warning("選択したデータに座標情報がありませんでした。")
+        return
+
+    stats = calculate_statistics(all_points)
+
+    with st.container(border=True):
+        st.subheader(f"📊 集計結果({len(selected_records)}件 / 矢数 {len(all_points)}本)")
+
+        fig = plot_points(all_points, figsize=(6, 6), color='#9B59B6')
+        st.pyplot(fig, use_container_width=True)
+
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.metric("重心X", f"{stats['centroid_x']:.2f}cm" if stats['centroid_x'] is not None else "-")
+            st.metric("重心Y", f"{stats['centroid_y']:.2f}cm" if stats['centroid_y'] is not None else "-")
+        with col_b:
+            st.metric("散らばり", f"{stats['spread']:.2f}cm" if stats['spread'] is not None else "-")
+        with col_c:
+            st.metric("的中心とのX差分", f"{stats['offset_x']:+.2f}cm" if stats['offset_x'] is not None else "-")
+            st.metric("的中心とのY差分", f"{stats['offset_y']:+.2f}cm" if stats['offset_y'] is not None else "-")
+
+        st.caption("X差分が+なら重心は的の右側、Y差分が+なら重心は的の上側にズレています。")
+
+
 def render_data_view(go_to):
     col_back, col_title = st.columns([1, 5])
     with col_back:
@@ -66,6 +107,12 @@ def render_data_view(go_to):
 
     if "viewing_record_key" not in st.session_state:
         st.session_state.viewing_record_key = None
+
+    if "selected_record_keys" not in st.session_state:
+        st.session_state.selected_record_keys = set()
+
+    if "show_aggregate" not in st.session_state:
+        st.session_state.show_aggregate = False
 
     col_id, col_size = st.columns(2)
     with col_id:
@@ -93,7 +140,34 @@ def render_data_view(go_to):
         st.info("データが見つかりませんでした。")
         return
 
+    # フィルタが変わったら選択状態をリセットする(別の絞り込み結果と混ざらないように)
+    current_filter_key = f"{user_id}_{size_filter}"
+    if st.session_state.get("last_filter_key") != current_filter_key:
+        st.session_state.selected_record_keys = set()
+        st.session_state.show_aggregate = False
+        st.session_state.last_filter_key = current_filter_key
+
     st.write(f"{len(records)}件のデータが見つかりました。")
+
+    # ----- 複数選択して集計するエリア -----
+    selected_count = len(st.session_state.selected_record_keys)
+    col_count, col_agg_btn, col_clear_btn = st.columns([2, 2, 1])
+    with col_count:
+        st.write(f"選択中: {selected_count}件")
+    with col_agg_btn:
+        if st.button("📊 選択データを集計", use_container_width=True, disabled=(selected_count == 0)):
+            st.session_state.show_aggregate = True
+            st.rerun()
+    with col_clear_btn:
+        if st.button("選択解除", use_container_width=True):
+            st.session_state.selected_record_keys = set()
+            st.session_state.show_aggregate = False
+            st.rerun()
+
+    # ----- 集計結果の表示 -----
+    if st.session_state.show_aggregate and selected_count > 0:
+        render_aggregate_section(records, current_filter_key)
+
     st.write("---")
 
     # 新しい順に表示
@@ -102,7 +176,17 @@ def render_data_view(go_to):
         record_key = f"{record.get('timestamp', '')}_{record.get('user_id', '')}_{idx}"
 
         with st.container(border=True):
-            col_info, col_search = st.columns([5, 1])
+            col_check, col_info, col_search = st.columns([1, 4, 1])
+            with col_check:
+                is_checked = st.checkbox(
+                    "選択", key=f"check_{record_key}",
+                    value=(record_key in st.session_state.selected_record_keys),
+                    label_visibility="collapsed",
+                )
+                if is_checked:
+                    st.session_state.selected_record_keys.add(record_key)
+                else:
+                    st.session_state.selected_record_keys.discard(record_key)
             with col_info:
                 st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')}")
                 st.write(f"的: {record.get('target_size_cm', '-')}cm / 合計点: {record.get('total_score', '-')}")
