@@ -25,19 +25,23 @@ def image_bytes_to_array(image_bytes):
 
 
 def render_edit_result(go_to):
-    # スマホでも十字キーが正しく表示されるようにCSSを注入
+    # スマホ対応CSS
     st.markdown("""
     <style>
-    /* 十字キーのボタン列を強制的に横並びに */
-    [data-testid="column"] {
-        min-width: 0 !important;
-        flex: 1 1 0 !important;
-        width: auto !important;
+    .dpad-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 4px;
+        max-width: 240px;
+        margin: 0 auto;
     }
-    /* ボタンのフォントサイズをスマホ向けに調整 */
-    div[data-testid="stButton"] > button {
-        font-size: 1.2rem !important;
-        padding: 0.4rem !important;
+    .dpad-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: #888;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -137,38 +141,32 @@ def render_edit_result(go_to):
     if selected_idx is not None and selected_idx < len(points):
         x, y = points[selected_idx]
         score, is_x = calculate_score([x, y])
-        st.caption(f"No.{selected_idx+1} を編集中 ／ 現在位置: x={x:.1f}cm, y={y:.1f}cm ／ 得点: {format_score(score, is_x)}")
+        st.caption(f"No.{selected_idx+1} を編集中 ／ x={x:.1f}cm, y={y:.1f}cm ／ 得点: {format_score(score, is_x)}")
 
         col_dpad, col_actions = st.columns([3, 2])
 
         with col_dpad:
-            # 真の十字形レイアウト(3行3列のグリッド)
-            _, c_up, _ = st.columns(3)
-            with c_up:
-                if st.button("▲", key="up", use_container_width=True):
+            st.markdown(f'<p style="text-align:center;font-size:13px;margin:0;">現在位置: ({x:.1f}, {y:.1f})</p>', unsafe_allow_html=True)
+            # 1行目: ▲ のみ中央
+            up_l, up_c, up_r = st.columns([1, 2, 1])
+            with up_c:
+                if st.button("▲  上", key="up", use_container_width=True):
                     points[selected_idx][1] += STEP_SIZE_CM
                     st.rerun()
-
-            c_left, c_center, c_right = st.columns(3)
-            with c_left:
-                if st.button("◀", key="left_btn", use_container_width=True):
+            # 2行目: ◀ と ▶
+            lr_l, lr_r = st.columns(2)
+            with lr_l:
+                if st.button("◀  左", key="left_btn", use_container_width=True):
                     points[selected_idx][0] -= STEP_SIZE_CM
                     st.rerun()
-            with c_center:
-                # 中央は現在の座標を小さく表示
-                st.markdown(
-                    f'<div style="text-align:center;font-size:11px;padding-top:8px;">'
-                    f'({x:.1f},{y:.1f})</div>',
-                    unsafe_allow_html=True,
-                )
-            with c_right:
-                if st.button("▶", key="right_btn", use_container_width=True):
+            with lr_r:
+                if st.button("右  ▶", key="right_btn", use_container_width=True):
                     points[selected_idx][0] += STEP_SIZE_CM
                     st.rerun()
-
-            _, c_down, _ = st.columns(3)
-            with c_down:
-                if st.button("▼", key="down", use_container_width=True):
+            # 3行目: ▼ のみ中央
+            dn_l, dn_c, dn_r = st.columns([1, 2, 1])
+            with dn_c:
+                if st.button("▼  下", key="down", use_container_width=True):
                     points[selected_idx][1] -= STEP_SIZE_CM
                     st.rerun()
 
