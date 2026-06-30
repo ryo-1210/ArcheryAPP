@@ -24,14 +24,15 @@ SCOPES = [
 
 # スプレッドシートの列構成(この順番で1行が記録される)
 COLUMNS = [
-    "record_id",        # レコードを一意に識別するID(更新・削除に使用)
+    "record_id",
     "timestamp",
     "user_id",
     "target_size_cm",
+    "distance_m",       # 射距離(m)
     "arrow_count",
-    "scores",          # スラッシュ区切り(例: 7/10/8/6/7/X)
-    "coords_x",         # カンマ区切り
-    "coords_y",         # カンマ区切り
+    "scores",
+    "coords_x",
+    "coords_y",
     "total_score",
     "centroid_x",
     "centroid_y",
