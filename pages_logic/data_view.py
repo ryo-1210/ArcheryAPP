@@ -127,6 +127,9 @@ def render_data_view(go_to):
     if "checkbox_generation" not in st.session_state:
         st.session_state.checkbox_generation = 0
 
+    if "next_checkbox_default" not in st.session_state:
+        st.session_state.next_checkbox_default = False
+
     col_id, col_size = st.columns(2)
     with col_id:
         user_id = st.selectbox("個人IDで検索", USER_ID_OPTIONS, key="search_user_id")
@@ -139,6 +142,43 @@ def render_data_view(go_to):
         "並び順", ["新しい順", "古い順"], key="sort_order_select", horizontal=True,
     )
 
+    # ----- 日付範囲フィルタ -----
+    from datetime import date, timedelta
+
+    if "date_filter_enabled" not in st.session_state:
+        st.session_state.date_filter_enabled = False
+    if "date_filter_start" not in st.session_state:
+        st.session_state.date_filter_start = date.today()
+    if "date_filter_end" not in st.session_state:
+        st.session_state.date_filter_end = date.today()
+
+    st.checkbox("日付で絞り込む", key="date_filter_enabled")
+
+    if st.session_state.date_filter_enabled:
+        col_today, col_yesterday, col_week = st.columns(3)
+        with col_today:
+            if st.button("今日", use_container_width=True):
+                st.session_state.date_filter_start = date.today()
+                st.session_state.date_filter_end = date.today()
+                st.rerun()
+        with col_yesterday:
+            if st.button("昨日", use_container_width=True):
+                yesterday = date.today() - timedelta(days=1)
+                st.session_state.date_filter_start = yesterday
+                st.session_state.date_filter_end = yesterday
+                st.rerun()
+        with col_week:
+            if st.button("過去7日間", use_container_width=True):
+                st.session_state.date_filter_start = date.today() - timedelta(days=6)
+                st.session_state.date_filter_end = date.today()
+                st.rerun()
+
+        col_start, col_end = st.columns(2)
+        with col_start:
+            date_start = st.date_input("開始日", key="date_filter_start")
+        with col_end:
+            date_end = st.date_input("終了日", key="date_filter_end")
+
     try:
         records = fetch_records_cached(user_id)
     except Exception as e:
@@ -148,6 +188,18 @@ def render_data_view(go_to):
     # 的紙サイズで絞り込み
     if size_filter != "(全サイズ)":
         records = [r for r in records if str(r.get("target_size_cm", "")) == str(size_filter)]
+
+    # 日付範囲で絞り込み(timestampは "YYYY-MM-DD HH:MM:SS" 形式)
+    if st.session_state.date_filter_enabled:
+        start_str = st.session_state.date_filter_start.strftime("%Y-%m-%d")
+        end_str = st.session_state.date_filter_end.strftime("%Y-%m-%d")
+
+        def in_date_range(record):
+            ts = str(record.get("timestamp", ""))
+            date_part = ts[:10]  # "YYYY-MM-DD"部分のみ取り出す
+            return start_str <= date_part <= end_str
+
+        records = [r for r in records if in_date_range(r)]
 
     if not records:
         st.info("データが見つかりませんでした。")
@@ -170,11 +222,16 @@ def render_data_view(go_to):
     # ----- チェックボックス一覧を先に描画する -----
     # (サイドバーの集計判定より先にウィジェットを生成し、最新の状態を反映させるため)
     for (idx, record), record_key in zip(ordered_records, record_keys):
+        check_key = f"check_{record_key}"
+        # このキーがまだ使われていない(新しい世代の初回描画)場合のみ、デフォルト値を適用する
+        if check_key not in st.session_state:
+            st.session_state[check_key] = st.session_state.next_checkbox_default
+
         with st.container(border=True):
             col_check, col_info, col_search = st.columns([1, 4, 1])
             with col_check:
                 st.checkbox(
-                    "選択", key=f"check_{record_key}",
+                    "選択", key=check_key,
                     label_visibility="collapsed",
                 )
             with col_info:
@@ -237,14 +294,15 @@ def render_data_view(go_to):
         col_all, col_none = st.columns(2)
         with col_all:
             if st.button("全選択", use_container_width=True):
-                for k in record_keys:
-                    st.session_state[f"check_{k}"] = True
+                # 世代を進め、次の描画でチェックボックスの初期値をTrueにする
+                st.session_state.checkbox_generation += 1
+                st.session_state.next_checkbox_default = True
                 st.rerun()
         with col_none:
             if st.button("選択解除", use_container_width=True):
-                # チェックボックスのkeyに世代番号を含めているため、
-                # 世代を1つ進めることで確実に全ウィジェットを未選択状態で再生成できる
+                # 世代を進め、次の描画でチェックボックスの初期値をFalseにする
                 st.session_state.checkbox_generation += 1
+                st.session_state.next_checkbox_default = False
                 st.session_state.show_aggregate = False
                 st.rerun()
 
