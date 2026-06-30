@@ -25,6 +25,22 @@ def image_bytes_to_array(image_bytes):
 
 
 def render_edit_result(go_to):
+    # スマホでも十字キーが正しく表示されるようにCSSを注入
+    st.markdown("""
+    <style>
+    /* 十字キーのボタン列を強制的に横並びに */
+    [data-testid="column"] {
+        min-width: 0 !important;
+        flex: 1 1 0 !important;
+        width: auto !important;
+    }
+    /* ボタンのフォントサイズをスマホ向けに調整 */
+    div[data-testid="stButton"] > button {
+        font-size: 1.2rem !important;
+        padding: 0.4rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     is_editing_existing = st.session_state.get("is_editing_existing", False)
     back_target = "data_view" if is_editing_existing else "analyze_input"
 
