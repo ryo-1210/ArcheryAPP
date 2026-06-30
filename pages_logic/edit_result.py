@@ -193,7 +193,8 @@ def render_edit_result(go_to):
     new_memo = st.text_area(
         "メモ", value=st.session_state.get("memo", ""), key="edit_memo_input"
     )
-    st.caption(f"的紙サイズ: {st.session_state.get('target_size', '-')}cm (変更不可)")
+    st.caption(f"的紙サイズ: {st.session_state.get('target_size', '-')}cm / "
+               f"距離: {st.session_state.get('distance', '-')}m (変更不可)")
 
     st.write("---")
 
@@ -235,6 +236,7 @@ def render_edit_result(go_to):
                 common_fields = {
                     "user_id": new_user_id,
                     "target_size_cm": target_size,
+                    "distance_m": st.session_state.get("distance", ""),
                     "arrow_count": len(points),
                     "scores": "/".join(score_labels),
                     "coords_x": ",".join(f"{p[0]:.2f}" for p in points),

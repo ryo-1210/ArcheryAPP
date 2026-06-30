@@ -13,6 +13,7 @@ MODEL_PATH = "archery_best.pt"
 
 USER_ID_OPTIONS = [f"{i:03d}" for i in range(1, 1000)]  # 001〜999
 TARGET_SIZE_OPTIONS = [20, 40, 60, 80, 122]  # cm
+DISTANCE_OPTIONS = [5, 10, 15, 18, 20, 25, 30, 50, 70, 90]  # m
 
 
 @st.cache_resource
@@ -45,15 +46,26 @@ def render_analyze_input(go_to):
     st.subheader("個人ID")
     user_id = st.selectbox("個人IDを選択", USER_ID_OPTIONS, key="user_id_select")
 
-    st.subheader("的紙サイズ")
-    target_size = st.selectbox(
-        "的紙サイズを選択(cm)",
-        TARGET_SIZE_OPTIONS,
-        index=2,  # デフォルト60cm
-        key="target_size_select",
-    )
-    if target_size != 60:
-        st.warning("現在のモデルは60cmの的紙での学習データのみのため、60cm以外は検出精度が低い可能性があります。")
+    col_size, col_dist = st.columns(2)
+    with col_size:
+        st.subheader("的紙サイズ")
+        target_size = st.selectbox(
+            "的紙サイズを選択(cm)",
+            TARGET_SIZE_OPTIONS,
+            index=2,  # デフォルト60cm
+            key="target_size_select",
+        )
+        if target_size != 60:
+            st.warning("現在のモデルは60cmの的紙での学習データのみのため、60cm以外は検出精度が低い可能性があります。")
+    with col_dist:
+        st.subheader("距離")
+        distance = st.selectbox(
+            "射距離を選択(m)",
+            DISTANCE_OPTIONS,
+            index=3,  # デフォルト18m
+            key="distance_select",
+            format_func=lambda x: f"{x}m",
+        )
 
     st.text_area("メモ(任意)", placeholder="練習内容や条件などを記入できます", key="memo_input")
 
@@ -90,6 +102,7 @@ def render_analyze_input(go_to):
 
             st.session_state.user_id = user_id
             st.session_state.target_size = target_size
+            st.session_state.distance = distance
             st.session_state.memo = st.session_state.get("memo_input", "")
 
             # 編集対象は初期状態として「左右統合」の結果を使う

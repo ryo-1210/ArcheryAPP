@@ -236,7 +236,8 @@ def render_data_view(go_to):
                 )
             with col_info:
                 st.write(f"**{record.get('timestamp', '')}** / ID: {record.get('user_id', '')}")
-                st.write(f"的: {record.get('target_size_cm', '-')}cm / 合計点: {record.get('total_score', '-')}")
+                st.write(f"合計点: {record.get('total_score', '-')}")
+                st.caption(f"的: {record.get('target_size_cm', '-')}cm / {record.get('distance_m', '-')}m")
             with col_search:
                 if st.button("🔍", key=f"view_{record_key}", use_container_width=True):
                     # 同じレコードをもう一度押したら閉じる(トグル動作)
