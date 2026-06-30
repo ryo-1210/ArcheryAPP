@@ -87,15 +87,12 @@ def render_edit_result(go_to):
 
     if has_images:
         tab1, tab2, tab3 = st.tabs(["プロット", "写真1", "写真2"])
-
         with tab1:
             fig = plot_points(points, selected_idx=selected_idx)
             st.pyplot(fig, use_container_width=True)
-
         with tab2:
             img = image_bytes_to_array(st.session_state.left_image_bytes)
             st.image(img, use_container_width=True)
-
         with tab3:
             img = image_bytes_to_array(st.session_state.right_image_bytes)
             st.image(img, use_container_width=True)
@@ -103,77 +100,104 @@ def render_edit_result(go_to):
         fig = plot_points(points, selected_idx=selected_idx)
         st.pyplot(fig, use_container_width=True)
 
-    st.write("")
-
-    # ----- 横スクロール可能な座標表(No.ボタン形式) -----
-    st.caption("⇔ 矢の番号をタップすると編集できます")
-
+    # ----- No.ボタン(プロット直下・コンパクト) -----
     if len(points) > 0:
+        st.caption("矢の番号をタップして選択→十字キーで位置を調整")
         cols = st.columns(len(points))
         for i, col in enumerate(cols):
             with col:
-                label = f"No.{i+1}"
                 btn_type = "primary" if i == selected_idx else "secondary"
-                if st.button(label, key=f"select_arrow_{i}", use_container_width=True, type=btn_type):
-                    st.session_state.selected_arrow_idx = i
+                if st.button(f"{i+1}", key=f"select_arrow_{i}",
+                             use_container_width=True, type=btn_type):
+                    if st.session_state.get("selected_arrow_idx") == i:
+                        st.session_state.selected_arrow_idx = None
+                    else:
+                        st.session_state.selected_arrow_idx = i
                     st.rerun()
-                x, y = points[i]
-                score, is_x = calculate_score([x, y])
-                st.caption(f"x:{x:.1f}\ny:{y:.1f}\n得点:{format_score(score, is_x)}")
     else:
-        st.write("矢が検出されませんでした。")
-
-    st.write("")
+        st.warning("矢が検出されませんでした。")
 
     # ----- 選択中の矢の編集UI(十字キー・削除・リセット) -----
     if selected_idx is not None and selected_idx < len(points):
-        st.subheader(f"No.{selected_idx + 1} を編集中")
+        x, y = points[selected_idx]
+        score, is_x = calculate_score([x, y])
+        st.caption(f"No.{selected_idx+1} を編集中 ／ 現在位置: x={x:.1f}cm, y={y:.1f}cm ／ 得点: {format_score(score, is_x)}")
 
-        col_pad, col_actions = st.columns([2, 1])
+        col_dpad, col_actions = st.columns([3, 2])
 
-        with col_pad:
-            # 十字キー(3x3グリッドで配置)
-            r1c1, r1c2, r1c3 = st.columns(3)
-            with r1c2:
-                if st.button("⬆", key="up", use_container_width=True):
+        with col_dpad:
+            # 真の十字形レイアウト(3行3列のグリッド)
+            _, c_up, _ = st.columns(3)
+            with c_up:
+                if st.button("▲", key="up", use_container_width=True):
                     points[selected_idx][1] += STEP_SIZE_CM
                     st.rerun()
 
-            r2c1, r2c2, r2c3 = st.columns(3)
-            with r2c1:
-                if st.button("⬅", key="left_btn", use_container_width=True):
+            c_left, c_center, c_right = st.columns(3)
+            with c_left:
+                if st.button("◀", key="left_btn", use_container_width=True):
                     points[selected_idx][0] -= STEP_SIZE_CM
                     st.rerun()
-            with r2c2:
-                st.write("")
-            with r2c3:
-                if st.button("➡", key="right_btn", use_container_width=True):
+            with c_center:
+                # 中央は現在の座標を小さく表示
+                st.markdown(
+                    f'<div style="text-align:center;font-size:11px;padding-top:8px;">'
+                    f'({x:.1f},{y:.1f})</div>',
+                    unsafe_allow_html=True,
+                )
+            with c_right:
+                if st.button("▶", key="right_btn", use_container_width=True):
                     points[selected_idx][0] += STEP_SIZE_CM
                     st.rerun()
 
-            r3c1, r3c2, r3c3 = st.columns(3)
-            with r3c2:
-                if st.button("⬇", key="down", use_container_width=True):
+            _, c_down, _ = st.columns(3)
+            with c_down:
+                if st.button("▼", key="down", use_container_width=True):
                     points[selected_idx][1] -= STEP_SIZE_CM
                     st.rerun()
 
         with col_actions:
+            st.write("")  # 上部の余白合わせ
+            if st.button("✅ 位置確定", type="primary", use_container_width=True):
+                st.session_state.selected_arrow_idx = None
+                st.rerun()
             if st.button("🗑 削除", use_container_width=True):
                 points.pop(selected_idx)
                 st.session_state.edit_points = points
                 st.session_state.selected_arrow_idx = None
                 st.rerun()
+            if not is_editing_existing:
+                if st.button("↺ リセット", use_container_width=True):
+                    original = st.session_state.final_points
+                    if selected_idx < len(original):
+                        points[selected_idx] = list(original[selected_idx])
+                        st.rerun()
 
-            if not is_editing_existing and st.button("↺ リセット", use_container_width=True):
-                # 元の解析結果(final_points)の該当インデックスに戻す
-                original = st.session_state.final_points
-                if selected_idx < len(original):
-                    points[selected_idx] = list(original[selected_idx])
-                    st.rerun()
+    st.write("---")
 
-        if st.button("✅ 位置確定", type="primary", use_container_width=True):
-            st.session_state.selected_arrow_idx = None
-            st.rerun()
+    # ----- 得点表(下部に移動) -----
+    if len(points) > 0:
+        scores_and_x = [calculate_score(p) for p in points]
+        score_labels = [format_score(s, x) for s, x in scores_and_x]
+        total = sum(s for s, _ in scores_and_x)
+
+        header = "".join(
+            f'<th style="border:1px solid #555;padding:4px 8px;background:#2b2b2b;color:#fff;">{i+1}</th>'
+            for i in range(len(score_labels))
+        )
+        cells = "".join(
+            f'<td style="border:1px solid #555;padding:4px 8px;text-align:center;">{s}</td>'
+            for s in score_labels
+        )
+        table_html = (
+            '<div style="overflow-x:auto;margin:6px 0;">'
+            '<table style="border-collapse:collapse;width:max-content;">'
+            f'<tr><th style="border:1px solid #555;padding:4px 8px;background:#2b2b2b;color:#fff;">No.</th>{header}</tr>'
+            f'<tr><th style="border:1px solid #555;padding:4px 8px;background:#2b2b2b;color:#fff;">得点</th>{cells}</tr>'
+            '</table></div>'
+        )
+        st.markdown(table_html, unsafe_allow_html=True)
+        st.caption(f"合計: {total}点")
 
     st.write("---")
 
