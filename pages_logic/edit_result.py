@@ -14,9 +14,6 @@ from archery_core import (
 )
 from google_integration import append_record, update_record
 
-# 十字キーで1回押すごとに動く距離(cm)
-STEP_SIZE_CM = 0.2
-
 
 def image_bytes_to_array(image_bytes):
     file_bytes = np.asarray(bytearray(image_bytes), dtype=np.uint8)
@@ -25,26 +22,6 @@ def image_bytes_to_array(image_bytes):
 
 
 def render_edit_result(go_to):
-    # スマホ対応CSS
-    st.markdown("""
-    <style>
-    .dpad-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: auto auto auto;
-        gap: 4px;
-        max-width: 240px;
-        margin: 0 auto;
-    }
-    .dpad-center {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        color: #888;
-    }
-    </style>
-    """, unsafe_allow_html=True)
     is_editing_existing = st.session_state.get("is_editing_existing", False)
     back_target = "data_view" if is_editing_existing else "analyze_input"
 
@@ -141,45 +118,38 @@ def render_edit_result(go_to):
     if selected_idx is not None and selected_idx < len(points):
         x, y = points[selected_idx]
         score, is_x = calculate_score([x, y])
-        st.caption(f"No.{selected_idx+1} を編集中 ／ x={x:.1f}cm, y={y:.1f}cm ／ 得点: {format_score(score, is_x)}")
+        st.caption(f"No.{selected_idx+1} を編集中 ／ 得点: {format_score(score, is_x)}")
 
-        col_dpad, col_actions = st.columns([3, 2])
+        new_x = st.slider(
+            "X座標 (cm) ← 左　右 →",
+            min_value=-30.0, max_value=30.0,
+            value=float(round(x, 1)), step=0.1,
+            key=f"slider_x_{selected_idx}",
+        )
+        new_y = st.slider(
+            "Y座標 (cm) ↓ 下　上 ↑",
+            min_value=-30.0, max_value=30.0,
+            value=float(round(y, 1)), step=0.1,
+            key=f"slider_y_{selected_idx}",
+        )
 
-        with col_dpad:
-            st.markdown(f'<p style="text-align:center;font-size:13px;margin:0;">現在位置: ({x:.1f}, {y:.1f})</p>', unsafe_allow_html=True)
-            # 1行目: ▲ のみ中央
-            up_l, up_c, up_r = st.columns([1, 2, 1])
-            with up_c:
-                if st.button("▲  上", key="up", use_container_width=True):
-                    points[selected_idx][1] += STEP_SIZE_CM
-                    st.rerun()
-            # 2行目: ◀ と ▶
-            lr_l, lr_r = st.columns(2)
-            with lr_l:
-                if st.button("◀  左", key="left_btn", use_container_width=True):
-                    points[selected_idx][0] -= STEP_SIZE_CM
-                    st.rerun()
-            with lr_r:
-                if st.button("右  ▶", key="right_btn", use_container_width=True):
-                    points[selected_idx][0] += STEP_SIZE_CM
-                    st.rerun()
-            # 3行目: ▼ のみ中央
-            dn_l, dn_c, dn_r = st.columns([1, 2, 1])
-            with dn_c:
-                if st.button("▼  下", key="down", use_container_width=True):
-                    points[selected_idx][1] -= STEP_SIZE_CM
-                    st.rerun()
+        if new_x != x or new_y != y:
+            points[selected_idx][0] = new_x
+            points[selected_idx][1] = new_y
+            st.rerun()
 
-        with col_actions:
-            st.write("")  # 上部の余白合わせ
+        col_actions = st.columns(3)
+        with col_actions[0]:
             if st.button("✅ 位置確定", type="primary", use_container_width=True):
                 st.session_state.selected_arrow_idx = None
                 st.rerun()
+        with col_actions[1]:
             if st.button("🗑 削除", use_container_width=True):
                 points.pop(selected_idx)
                 st.session_state.edit_points = points
                 st.session_state.selected_arrow_idx = None
                 st.rerun()
+        with col_actions[2]:
             if not is_editing_existing:
                 if st.button("↺ リセット", use_container_width=True):
                     original = st.session_state.final_points
